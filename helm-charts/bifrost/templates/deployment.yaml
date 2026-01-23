@@ -8,6 +8,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "bifrost.labels" . | nindent 4 }}
+    {{- with .Values.deploymentLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.deploymentAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
@@ -130,6 +137,19 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.bifrost.governance.authConfig.existingSecret }}
                   key: {{ .Values.bifrost.governance.authConfig.passwordKey | default "password" }}
+            {{- end }}
+            {{- /* Top-level auth credentials from existing secret (reuses same env vars as governance) */ -}}
+            {{- if and .Values.bifrost.authConfig .Values.bifrost.authConfig.existingSecret (not (and .Values.bifrost.governance .Values.bifrost.governance.authConfig .Values.bifrost.governance.authConfig.existingSecret)) }}
+            - name: BIFROST_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bifrost.authConfig.existingSecret }}
+                  key: {{ .Values.bifrost.authConfig.usernameKey | default "username" }}
+            - name: BIFROST_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.bifrost.authConfig.existingSecret }}
+                  key: {{ .Values.bifrost.authConfig.passwordKey | default "password" }}
             {{- end }}
             {{- /* Provider secrets */ -}}
             {{- range $provider, $secret := .Values.bifrost.providerSecrets }}
